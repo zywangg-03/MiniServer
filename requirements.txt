@@ -1,0 +1,5 @@
+# Install the appropriate PyTorch wheel first; see README for CPU/CUDA options.
+torch>=2.6,<3
+transformers==4.57.1
+pytest==8.4.2
+
