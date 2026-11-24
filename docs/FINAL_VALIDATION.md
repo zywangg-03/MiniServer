@@ -35,6 +35,23 @@ python -m pytest -q
 
 If your Phase 1 cache lives elsewhere, set `HF_HOME` to that existing location instead. Avoid downloading a second copy when home storage is nearly full. Use `home-quota -u zywangg` and `du -xhd1 /home/zywangg | sort -h` to inspect usage. The final script runs offline and will fail clearly if the cache is missing.
 
+For a fresh cache, run this once in the activated environment on a node with network access. Use the same `HF_HOME` during validation.
+
+```bash
+unset HF_HUB_OFFLINE
+python - <<'PY'
+from huggingface_hub import snapshot_download
+from miniserve.config import ModelConfig
+
+model = ModelConfig()
+snapshot_download(
+    model.model_name,
+    revision=model.revision,
+    allow_patterns=["*.json", "*.safetensors", "*.txt", "*.jinja"],
+)
+PY
+```
+
 Expected default result: **84 passed, 8 skipped**. The eight real-model acceptance cases include the new unequal-length batched decode test. That test verifies exact greedy IDs against individual HF generation, not just plausible text. With real-model tests enabled by the final script, a successful run reports **92 passed**.
 
 ## 3. Allocate the GPU
@@ -124,6 +141,7 @@ The service supports raw prompts with `"use_chat_template": false`. Only greedy 
 From your Mac:
 
 ```bash
+mkdir -p /Users/zywangg/Desktop/miniserver/results/remote
 rsync -av zywangg@greatlakes-xfer.arc-ts.umich.edu:/home/zywangg/miniserver/results/ \
   /Users/zywangg/Desktop/miniserver/results/remote/
 ```

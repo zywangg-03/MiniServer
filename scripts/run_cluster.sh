@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # 远程服务器版本：SSH 登录学校 GPU 服务器后执行，不依赖 Slurm 环境变量。
 # 单服务器、单 GPU 推理；没有多 GPU 并行。本脚本不建立 SSH 连接或申请资源。
-# 可选：Slurm 计算节点也可通过 slurm_phase1.sbatch 调用。
+# 如需复现第一阶段，在已分配 GPU 的 Slurm 计算节点也可直接运行本脚本。
 set -euo pipefail
 
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"

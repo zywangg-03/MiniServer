@@ -31,7 +31,7 @@ The original JSON files are preserved in [evidence/phase1_v100](evidence/phase1_
 
 Local validation: **84 tests passed, 8 pretrained-model tests skipped**. The complete script also passed with a saved synthetic checkpoint, including eight successful real HTTP/SSE requests and an observed decode batch size of eight. **Real Qwen/V100 acceptance and serving measurements for the new code remain to be run on the cluster.** No GPU batching speedup is claimed yet.
 
-## Run tonight
+## Run GPU validation
 
 Follow [the final validation guide](docs/FINAL_VALIDATION.md) for the Great Lakes commands. After updating dependencies and preparing the existing model cache, run inside an allocated GPU session:
 
@@ -48,7 +48,7 @@ bash scripts/run_final.sh --quick
 bash scripts/run_final.sh
 ```
 
-Both scripts fail on test failures, output mismatches, or failed HTTP requests. They write raw JSON, JUnit XML, dependency versions, a comparison CSV, and server logs into a unique `results/final-*/` directory. `--quick` is a smoke test, not publishable performance evidence.
+Both modes stop on test failures, output mismatches, or failed HTTP requests. Each run writes raw JSON, JUnit XML, dependency versions, a comparison CSV, and server logs into a unique `results/final-*/` directory.
 
 ## Install and develop
 
@@ -105,4 +105,4 @@ The engine benchmark precomputes HF reference outputs and checks every measured 
 
 The KV budget reserves theoretical compact cache bytes for `prompt + max_new_tokens`. **It excludes weights, activations, padded batch storage, and temporary copies; it cannot guarantee avoidance of physical CUDA OOM.** Every decode repacks and clones caches, so copy overhead can make this implementation slower than HF. Strict FIFO can cause head-of-line blocking. One unchunked prefill runs before each decode iteration, so long prompts can interrupt active streams. These are explicit design tradeoffs to measure.
 
-Detailed design and acceptance boundaries: [shortened implementation scope](docs/IMPLEMENTATION_STATUS.md). Original roadmap: [Chinese blueprint](MiniServe_Implementation_Blueprint_CN.md). Original Phase 1 instructions: [GPU validation](docs/GPU_VALIDATION_CN.md).
+To reproduce the Phase 1 baselines, run `bash scripts/run_local.sh --local-files-only` locally or `bash scripts/run_cluster.sh --local-files-only` in an allocated GPU session. See the [implementation notes](docs/IMPLEMENTATION_STATUS.md) and the [original project plan](MiniServe_Implementation_Blueprint_CN.md).

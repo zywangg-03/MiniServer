@@ -16,6 +16,5 @@ dist/
 logs/
 slurm-*.out
 miniserve-*.out
-results/*
-!results/.gitkeep
+/results/
 
