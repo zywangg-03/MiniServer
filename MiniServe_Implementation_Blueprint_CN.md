@@ -3,7 +3,7 @@
 > **版本**：v1.0 · 2026-11  
 > **定位**：独立 AI Infrastructure / ML Systems 工程项目  
 > **原始状态**：本计划编写时处于设计阶段，尚无代码、运行结果或 Benchmark 数据。  
-> **实施进度（2026-11-16）**：已搭建第 9 节要求的 Phase 1 基础代码、HF baseline、手动 prefill/decode、正确性测试，以及本地/SSH 单 GPU 运行入口。本地 CPU 测试 63 项通过，7 项正式模型测试待远端手动验证；尚无真实 Qwen + CUDA 验收或 GPU benchmark 数据。验证步骤见 [GPU 手动验证指南](docs/GPU_VALIDATION_CN.md)。下文其余阶段仍为待实施计划。
+> **实施进度（2026-11-24）**：用户上传的 Phase 1 V100 结果已通过 6 组 correctness 比较和 15 组 baseline 输出对照。为缩短周期，现已实现 FIFO、每轮一次 prefill、真正的共享 decode forward、逻辑 KV admission、HTTP/SSE 与实验脚本；删减 static batching、调度策略对比等扩展。新功能通过本地微型模型及 HTTP 测试，真实 Qwen/V100 batching 验收仍待运行。最新范围见 [实施状态](docs/IMPLEMENTATION_STATUS.md)，一键 GPU 验证见 [最终验证指南](docs/FINAL_VALIDATION.md)。下文保留原始完整路线图，不能视为所有原计划已经验收。
 
 ## 1. MVP 目标与技术栈
 

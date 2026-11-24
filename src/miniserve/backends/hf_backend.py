@@ -1,8 +1,8 @@
-"""Single-request HF execution, shared by local and remote single-GPU runs.
+"""HF execution, shared by local and remote single-GPU runs.
 
-Phase 1 deliberately has no batching or scheduler. Each generation owns a fresh
-DynamicCache. A selected output token enters the cache only on the next decode
-call; the final output token does not need an extra forward pass.
+Single-request generation owns a fresh DynamicCache; decode_batch additionally
+supports genuine shared forwards for different-length request histories. An
+output token enters its cache only on the next decode call.
 """
 
 from __future__ import annotations
@@ -26,6 +26,7 @@ from transformers import (
 from transformers.cache_utils import Cache
 
 from miniserve.config import ModelConfig
+from miniserve.cache_adapter import pack_kv_caches, unpack_kv_caches
 
 
 class HFBackend:
@@ -173,6 +174,45 @@ class HFBackend:
         return values
 
     @torch.inference_mode()
+    def decode_batch(
+        self, next_tokens: torch.Tensor, caches: list[Cache]
+    ) -> tuple[torch.Tensor, list[Cache]]:
+        """Run ONE forward for the entire active decode batch.
+
+        Inputs are each request's previously emitted token. Outputs are logits
+        predicting its next output token and compact caches containing the input
+        token. Multiple-request inputs remain unmodified. A single-request call
+        uses decode() directly and therefore updates that cache in place.
+        """
+        if not caches or not isinstance(next_tokens, torch.Tensor):
+            raise ValueError("A nonempty cache list and next-token tensor are required")
+        if next_tokens.shape != (len(caches), 1) or next_tokens.dtype != torch.long:
+            raise ValueError("next_tokens must be torch.long with shape [batch_size, 1]")
+        if any(not isinstance(cache, Cache) for cache in caches):
+            raise ValueError("Every request must have a Transformers Cache")
+        if any(not 0 < cache.get_seq_length() < self.context_limit for cache in caches):
+            raise ValueError("Each cache must be nonempty and leave room for one token")
+        if bool(((next_tokens < 0) | (next_tokens >= self.model.config.vocab_size)).any()):
+            raise ValueError("next_tokens contain IDs outside the vocabulary")
+        if len(caches) == 1:
+            logits, cache = self.decode(next_tokens, caches[0])
+            return logits, [cache]
+        packed = pack_kv_caches(caches)
+        if packed.attention_mask.device != self.device:
+            raise ValueError("Caches must be on the model device")
+        output = self.model(
+            input_ids=next_tokens.to(self.device),
+            past_key_values=packed.cache,
+            attention_mask=packed.attention_mask,
+            position_ids=packed.position_ids,
+            cache_position=packed.cache_position,
+            use_cache=True,
+            return_dict=True,
+            logits_to_keep=1,
+        )
+        return output.logits, unpack_kv_caches(output.past_key_values, packed.lengths)
+
+    @torch.inference_mode()
     def generate_ids(
         self,
         input_ids: torch.Tensor,
@@ -239,7 +279,7 @@ class HFBackend:
 
     def environment_info(self) -> dict[str, Any]:
         """Record actual hardware, software and resolved model revision per run."""
-        template = self.tokenizer.chat_template if self.tokenizer is not None else None
+        template = getattr(self.tokenizer, 'chat_template', None)
         info: dict[str, Any] = {
             "python": platform.python_version(),
             "platform": platform.platform(),
